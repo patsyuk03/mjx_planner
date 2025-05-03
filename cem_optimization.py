@@ -212,7 +212,7 @@ class cem_optimization():
 def main():
 
 	start_time = time.time()
-	opt_class = cem_optimization(num_dof=6, num_batch=2000, num_steps=50, maxiter_cem=30,
+	opt_class = cem_optimization(num_dof=6, num_batch=500, num_steps=8, maxiter_cem=1,
                            w_pos=1, w_rot=0.5, w_col=10, num_elite=0.05, timestep=0.05)
 
 	start_time_comp_cem = time.time()
