@@ -210,25 +210,41 @@ class cem_optimization():
 		return cost, cost_g, cost_r, cost_c, thetadot, theta, xi_mean
 	
 def main():
+	SOURCE_DIR = os.path.dirname(__file__)
 
-	start_time = time.time()
-	opt_class = cem_optimization(num_dof=6, num_batch=500, num_steps=8, maxiter_cem=1,
-                           w_pos=1, w_rot=0.5, w_col=10, num_elite=0.05, timestep=0.05)
+	batch_size = 500 # [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000] 8, 1
+	num_steps = 8 # [8, 13, 18, 23, 28, 33, 38, 43, 48, 53] 500 1
+	num_iter = 46 # [1, 6, 11, 16, 21, 26, 31, 36, 41, 46] 500 8
 
-	start_time_comp_cem = time.time()
 	target_pos = np.array([-0.3, 0, 0.9])
 	target_rot = np.array([0, 0.70711, 0.70711, 0])
-	cost, cost_g, cost_r, cost_c, thetadot, theta, xi_mean = opt_class.compute_cem(xi_mean=np.zeros(opt_class.nvar), target_pos=target_pos, target_rot=target_rot)
 
-	print(f"Total time: {round(time.time()-start_time, 2)}s")
-	print(f"Compute CEM time: {round(time.time()-start_time_comp_cem, 2)}s")
+	time_compilation = time.time()
+	opt_class = cem_optimization(num_dof=6, num_batch=batch_size, num_steps=num_steps, maxiter_cem=num_iter,
+                           w_pos=1, w_rot=0.5, w_col=10, num_elite=0.05, timestep=0.05)
+	out = opt_class.compute_cem(xi_mean=np.zeros(opt_class.nvar), target_pos=target_pos, target_rot=target_rot)
+	dt_compilation = time.time()-time_compilation
 
-	np.savetxt('data/costs.csv',cost, delimiter=",")
-	np.savetxt('data/thetadot.csv',thetadot, delimiter=",")
-	np.savetxt('data/theta.csv',theta, delimiter=",")
-	np.savetxt('data/cost_g.csv',cost_g, delimiter=",")
-	np.savetxt('data/cost_r.csv',cost_r, delimiter=",")
-	np.savetxt('data/cost_c.csv',[cost_c], delimiter=",")
+	with open(f'{SOURCE_DIR}/data/performance_2/compilation_num_iter.csv', "ab") as f:
+		np.savetxt(f, [dt_compilation])
+
+	dt_computation_list = list()
+	for i in range(10):
+		time_compute = time.time()
+		out = opt_class.compute_cem(xi_mean=np.zeros(opt_class.nvar), target_pos=target_pos, target_rot=target_rot)
+		dt_computation = time.time()-time_compute
+		dt_computation_list.append(dt_computation)
+
+	print(f"Compilation time: {round(dt_compilation, 2)}s")
+	print(f"Compute CEM time: {round(dt_computation, 2)}s")
+	np.savetxt(f'{SOURCE_DIR}/data/performance_2/num_iter/computation_{num_iter}.csv', dt_computation_list, delimiter=",")
+
+	# np.savetxt('data/costs.csv',cost, delimiter=",")
+	# np.savetxt('data/thetadot.csv',thetadot, delimiter=",")
+	# np.savetxt('data/theta.csv',theta, delimiter=",")
+	# np.savetxt('data/cost_g.csv',cost_g, delimiter=",")
+	# np.savetxt('data/cost_r.csv',cost_r, delimiter=",")
+	# np.savetxt('data/cost_c.csv',[cost_c], delimiter=",")
 
 	
 	
