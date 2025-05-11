@@ -34,24 +34,14 @@
     <exclude body1="base_1" body2="target"/>
     <exclude body1="table_1" body2="target"/>
 
-    <exclude body1="hande" body2="center"/>
-    <exclude body1="wrist_3_link_1" body2="center"/>
-    <exclude body1="wrist_2_link_1" body2="center"/>
-    <exclude body1="wrist_1_link_1" body2="center"/>
-    <exclude body1="forearm_link_1" body2="center"/>
-    <exclude body1="upper_arm_link_1" body2="center"/>
-    <exclude body1="shoulder_link_1" body2="center"/>
-    <exclude body1="base_1" body2="center"/>
-    <exclude body1="table_1" body2="center"/>
-
-    <exclude body1="hande" body2="center_0"/>
-    <exclude body1="wrist_3_link_1" body2="center_0"/>
-    <exclude body1="wrist_2_link_1" body2="center_0"/>
-    <exclude body1="wrist_1_link_1" body2="center_0"/>
-    <exclude body1="forearm_link_1" body2="center_0"/>
-    <exclude body1="upper_arm_link_1" body2="center_0"/>
-    <exclude body1="shoulder_link_1" body2="center_0"/>
-    <exclude body1="base_1" body2="center_0"/>
-    <exclude body1="table_1" body2="center_0"/>
+    <!-- <exclude body1="hande" body2="obstacle"/>
+    <exclude body1="wrist_3_link_1" body2="obstacle"/>
+    <exclude body1="wrist_2_link_1" body2="obstacle"/>
+    <exclude body1="wrist_1_link_1" body2="obstacle"/>
+    <exclude body1="forearm_link_1" body2="obstacle"/>
+    <exclude body1="upper_arm_link_1" body2="obstacle"/>
+    <exclude body1="shoulder_link_1" body2="obstacle"/>
+    <exclude body1="base_1" body2="obstacle"/>
+    <exclude body1="table_1" body2="obstacle"/> -->
   </contact>
 </mujoco>

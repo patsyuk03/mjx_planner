@@ -14,10 +14,6 @@ import numpy as np
 
 from mj_planner.mjx_planner import cem_planner
 
-
-
-
-
 class MocapListener(Node):
     def __init__(self):
         super().__init__('mocap_listener')
@@ -31,11 +27,14 @@ class MocapListener(Node):
         self.viewer = None
         self.data = None
         self.xi_mean = None
+        self.thetadot = None
         self.target_pos = None
         self.target_rot = None
+        self.obstacle_pos = None
+        self.obstacle_rot = None
         self.init_position = None
         self.init_rotation = None
-        self.init_joint_position = [-1.52, -1.26, -1.75, -1.69,  1.64, 0.2]
+        self.init_joint_position = [1.5, -1.8, 1.75, -1.25, -1.6, 0.0]#[-1.52, -1.26, -1.75, -1.69,  1.64, 0.2]
 
         connected = False
         try:
@@ -54,6 +53,12 @@ class MocapListener(Node):
                 self.object1_callback,
                 qos_profile 
             )
+            self.subscription_obstacle1 = self.create_subscription(
+                PoseStamped,
+                '/vrpn_mocap/obstacle1/pose',
+                self.obstacle1_callback,
+                qos_profile 
+            )
             # self.run_mpc()
             self.timer = self.create_timer(0.1, self.run_mpc)
             # self.close_connection()
@@ -69,8 +74,8 @@ class MocapListener(Node):
 
     def init_cem(self):
         start_time = time.time()
-        self.cem =  cem_planner(num_dof=6, num_batch=800, num_steps=8, maxiter_cem=1,
-                           w_pos=5, w_rot=1.5, w_col=10, num_elite=0.01, timestep=0.05)
+        self.cem =  cem_planner(num_dof=6, num_batch=500, num_steps=8, maxiter_cem=1,
+                           w_pos=5, w_rot=1.5, w_col=10, num_elite=0.05, timestep=0.1)
         print(f"Initialized CEM Planner: {round(time.time()-start_time, 2)}s")
 
         self.model = self.cem.model
@@ -79,13 +84,17 @@ class MocapListener(Node):
         mujoco.mj_forward(self.model, self.data)
 
         self.xi_mean = np.zeros(self.cem.nvar)
+        self.thetadot = np.zeros(6)
         self.target_pos = self.model.body(name="target").pos
         self.target_rot = self.model.body(name="target").quat
+        self.obstacle_pos = self.data.mocap_pos[self.model.body_mocapid[self.model.body(name='obstacle').id]]
+        self.obstacle_rot = self.data.mocap_quat[self.model.body_mocapid[self.model.body(name='obstacle').id]]
 
         self.init_position = self.data.site_xpos[self.model.site(name="tcp").id].copy()
         self.init_rotation = self.data.xquat[self.model.body(name="hande").id].copy()
 
         self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
+        self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
         self.viewer.cam.lookat[:] = [0.0, 0.0, 0.8]  
         self.viewer.cam.distance = 5.0 
         self.viewer.cam.azimuth = 90.0 
@@ -93,60 +102,53 @@ class MocapListener(Node):
 
         start_time = time.time()
         _ = self.cem.compute_cem(xi_mean=self.xi_mean, 
-                                      init_pos=np.array(self.rob.getj()), init_vel=np.zeros(6), 
-                                      target_pos=self.target_pos, target_rot=self.target_rot)
+                                 init_pos=np.array(self.rob.getj()), init_vel=np.zeros(6), 
+                                 target_pos=self.target_pos, target_rot=self.target_rot,
+                                 obstacle_pos=self.obstacle_pos, obstacle_rot=self.obstacle_rot)
         print(f"Compute CEM: {round(time.time()-start_time, 2)}s")
 
     def run_mpc(self):
-        thetadot = np.zeros(6)
 
         start_time = time.time()
 
         current_pos = np.array(self.rob.getj())
-        current_vel = thetadot
+        current_vel = self.thetadot
 
 
         self.target_pos = self.model.body(name="target").pos
         self.target_rot = self.model.body(name="target").quat
 
+        self.obstacle_pos = self.data.mocap_pos[self.model.body_mocapid[self.model.body(name='obstacle').id]]
+        self.obstacle_rot = self.data.mocap_quat[self.model.body_mocapid[self.model.body(name='obstacle').id]]
 
         cost, best_cost_g, best_cost_c, best_vels, best_traj, self.xi_mean = self.cem.compute_cem(xi_mean=self.xi_mean, 
                                 init_pos=current_pos, init_vel=current_vel, 
-                                target_pos=self.target_pos, target_rot=self.target_rot)
+                                target_pos=self.target_pos, target_rot=self.target_rot, 
+                                obstacle_pos=self.obstacle_pos, obstacle_rot=self.obstacle_rot)
         
-        thetadot = np.mean(best_vels[1:5], axis=0)
-
-        # print(thetadot)
+        self.thetadot = np.mean(best_vels[1:3], axis=0)
 
         # s_time = time.time()
-        self.rob.speedj(thetadot, acc=1, min_time=0.2)
+        self.rob.speedj(self.thetadot, acc=2, min_time=0.2)
         # print(f'Time: {"%.0f"%((time.time() - s_time)*1000)}ms')
 
         self.data.qpos[:6] = self.rob.getj()
+        # self.data.qvel[:6] = thetadot
         mujoco.mj_step(self.model, self.data)
 
         cost_g = np.linalg.norm(self.data.site_xpos[self.cem.tcp_id] - self.target_pos)   
         self.viewer.sync()
         
-        print(f'Step Time: {"%.0f"%((time.time() - start_time)*1000)}ms | Cost g: {"%.2f"%(float(cost_g))}')
-
-
-
-
-    # def update_viewer(self, body_name, pose):
-    #     self.model.body(name=body_name).pos = [-pose.position.x, -pose.position.y, pose.position.z]
-    #     mujoco.mj_step(self.model, self.data)
-    #     self.viewer.sync()
-
-
+        print(f'Step Time: {"%.0f"%((time.time() - start_time)*1000)}ms | Cost g: {"%.2f"%(float(cost_g))} | Cost c: {"%.2f"%(float(best_cost_c))} | Cost: {np.round(cost, 2)}')
 
     def object1_callback(self, msg):
-        self.get_logger().info(
-            f"Received Pose:\n"
-            f"  Position -> x: {msg.pose.position.x}, y: {msg.pose.position.y}, z: {msg.pose.position.z}\n"
-        )
         pose = msg.pose
         self.model.body(name='target').pos = [-pose.position.x, -pose.position.y, pose.position.z]
+
+    def obstacle1_callback(self, msg):
+        pose = msg.pose
+        # self.model.body(name='obstacle').pos = [-pose.position.x, -pose.position.y, pose.position.z]
+        self.data.mocap_pos[self.model.body_mocapid[self.model.body(name='obstacle').id]] = [-pose.position.x, -pose.position.y, pose.position.z]
 
 
 def main(args=None):

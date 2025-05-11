@@ -118,8 +118,9 @@ class cem_planner():
 
 		self.hande_id = self.model.body(name="hande").id
 		self.tcp_id = self.model.site(name="tcp").id
+		self.obstacle_qpos_idx = self.model.body_mocapid[self.model.body(name='obstacle').id]
 
-		self.compute_rollout_batch = jax.vmap(self.compute_rollout_single, in_axes = (0, None, None))
+		self.compute_rollout_batch = jax.vmap(self.compute_rollout_single, in_axes = (0, None, None, None, None))
 		self.compute_cost_batch = jax.vmap(self.compute_cost_single, in_axes = (0))
 
 		self.print_info()
@@ -261,11 +262,13 @@ class cem_planner():
 		return mjx_data, (theta, eef_pos, eef_rot, collision)
 
 	@partial(jax.jit, static_argnums=(0,))
-	def compute_rollout_single(self, thetadot, init_pos, init_vel):
+	def compute_rollout_single(self, thetadot, init_pos, init_vel, obstacle_pos, obstacle_rot):
 		mjx_data = self.mjx_data
 		qvel = mjx_data.qvel.at[:self.num_dof].set(init_vel)
 		qpos = mjx_data.qpos.at[:self.num_dof].set(init_pos)
-		mjx_data = mjx_data.replace(qvel=qvel, qpos=qpos)
+		mocap_pos = mjx_data.mocap_pos.at[self.obstacle_qpos_idx].set(obstacle_pos)
+		mocap_quat = mjx_data.mocap_quat.at[self.obstacle_qpos_idx].set(obstacle_rot)
+		mjx_data = mjx_data.replace(qvel=qvel, qpos=qpos, mocap_pos=mocap_pos, mocap_quat=mocap_quat)
 		thetadot_single = thetadot.reshape(self.num_dof, self.num)
 		_, out = jax.lax.scan(self.mjx_step, mjx_data, thetadot_single.T, length=self.num)
 		theta, eef_pos, eef_rot, collision = out
@@ -323,7 +326,7 @@ class cem_planner():
 	
 	@partial(jax.jit, static_argnums=(0,))
 	def cem_iter(self, carry, _):
-		init_pos, init_vel, target_pos, target_rot, xi_mean, xi_cov, key, state_term = carry
+		init_pos, init_vel, target_pos, target_rot, obstacle_pos, obstacle_rot, xi_mean, xi_cov, key, state_term = carry
 
 		xi_mean_prev = xi_mean 
 		xi_cov_prev = xi_cov
@@ -333,13 +336,13 @@ class cem_planner():
 
 		thetadot = jnp.dot(self.A_thetadot, xi_filtered.T).T
 
-		theta, eef_pos, eef_rot, collision = self.compute_rollout_batch(thetadot, init_pos, init_vel)
+		theta, eef_pos, eef_rot, collision = self.compute_rollout_batch(thetadot, init_pos, init_vel, obstacle_pos, obstacle_rot)
 		cost_batch, cost_g_batch, cost_c_batch = self.compute_cost_batch(thetadot, eef_pos, eef_rot, collision, target_pos, target_rot)
 
 		xi_ellite, idx_ellite, cost_ellite = self.compute_ellite_samples(cost_batch, xi_samples)
 		xi_mean, xi_cov = self.compute_mean_cov(cost_ellite, xi_mean_prev, xi_cov_prev, xi_ellite)
 
-		carry = (init_pos, init_vel, target_pos, target_rot, xi_mean, xi_cov, key, state_term)
+		carry = (init_pos, init_vel, target_pos, target_rot, obstacle_pos, obstacle_rot, xi_mean, xi_cov, key, state_term)
 		return carry, (cost_batch, cost_g_batch, cost_c_batch, thetadot, theta)
 
 	@partial(jax.jit, static_argnums=(0,))
@@ -349,7 +352,9 @@ class cem_planner():
 		init_vel=jnp.zeros(6), 
 		init_acc=jnp.zeros(6),
 		target_pos=jnp.zeros(3),
-		target_rot=jnp.zeros(4)
+		target_rot=jnp.zeros(4),
+		obstacle_pos=jnp.zeros(3),
+		obstacle_rot=jnp.zeros(4)
 		):
 
 		theta_init = jnp.tile(init_pos, (self.num_batch, 1))
@@ -364,11 +369,11 @@ class cem_planner():
 		state_term = jnp.hstack((theta_init, thetadot_init, thetaddot_init, thetadot_fin, thetaddot_fin))
 		state_term = jnp.asarray(state_term)
 		
-		xi_cov = 10*jnp.identity(self.nvar)
+		xi_cov = 50*jnp.identity(self.nvar)
   
 		key, subkey = jax.random.split(self.key)
 
-		carry = (init_pos, init_vel, target_pos, target_rot, xi_mean, xi_cov, key, state_term)
+		carry = (init_pos, init_vel, target_pos, target_rot, obstacle_pos, obstacle_rot, xi_mean, xi_cov, key, state_term)
 		scan_over = jnp.array([0]*self.maxiter_cem)
 		carry, out = jax.lax.scan(self.cem_iter, carry, scan_over, length=self.maxiter_cem)
 		cost_batch, cost_g_batch, cost_c_batch, thetadot, theta = out
@@ -379,7 +384,7 @@ class cem_planner():
 		best_traj = theta[-1][idx_min].reshape((self.num_dof, self.num)).T
 		best_cost_g = cost_g_batch[-1][idx_min]
 		best_cost_c = cost_c_batch[-1][idx_min]
-		xi_mean = carry[4]
+		xi_mean = carry[6]
 
 		return cost, best_cost_g, best_cost_c, best_vels, best_traj, xi_mean
 	
