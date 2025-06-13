@@ -5,6 +5,31 @@ import time
 
 import mujoco
 from mujoco import viewer
+from utils.quat_math import rotation_quaternion, quaternion_multiply, quaternion_distance
+
+target_positions_1 = [
+            [-0.3, 0.3, 0.8],
+            [-0.2, -0.4, 1.0],
+            [-0.3, -0.1, 0.8],
+        ]
+
+target_rotations_1 = [
+    rotation_quaternion(-135, np.array([1,0,0])),
+    quaternion_multiply(rotation_quaternion(90, np.array([0,0,1])),rotation_quaternion(135, np.array([1,0,0]))),
+    quaternion_multiply(rotation_quaternion(180, np.array([0,0,1])),rotation_quaternion(-90, np.array([0,1,0]))),
+]
+
+target_positions_2 = [
+    [-0.3, -0.3, 0.8],
+    [-0.2, 0.4, 1.0],
+    [-0.3, 0.1, 0.8],
+]
+
+target_rotations_2 = [
+    quaternion_multiply(rotation_quaternion(180, np.array([0,0,1])), rotation_quaternion(135, np.array([1,0,0]))),
+    quaternion_multiply(rotation_quaternion(-90, np.array([0,0,1])),rotation_quaternion(-135, np.array([1,0,0]))),
+    quaternion_multiply(rotation_quaternion(0, np.array([0,0,1])),rotation_quaternion(90, np.array([0,1,0]))),
+]
 
 
 class Visualizer():
@@ -20,6 +45,11 @@ class Visualizer():
         self.model.opt.timestep = 0.002
         self.data = mujoco.MjData(self.model)
         self.data.qpos[:12] = self.init_joint_state
+        target_idx = 2
+        self.model.body(name="target_0").pos = target_positions_1[target_idx]
+        self.model.body(name="target_0").quat = target_rotations_1[target_idx]
+        self.model.body(name="target_1").pos = target_positions_2[target_idx]
+        self.model.body(name="target_1").quat = target_rotations_2[target_idx]
 
         if traj:
             file_path = f"{os.path.dirname(__file__)}/data/thetadot.csv" 

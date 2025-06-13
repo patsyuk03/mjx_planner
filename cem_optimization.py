@@ -111,16 +111,16 @@ class cem_optimization():
 		return theta.T.flatten(), eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision
 	
 	@partial(jax.jit, static_argnums=(0,))
-	def compute_cost_single(self, thetadot, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision, target_pos, target_rot):
+	def compute_cost_single(self, thetadot, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision, target_pos, target_rot, target_pos_2, target_rot_2):
 		cost_g_1 = jnp.linalg.norm(eef_pos - target_pos, axis=1)
-		cost_g_2 = jnp.linalg.norm(eef_pos_2 - target_pos, axis=1)
+		cost_g_2 = jnp.linalg.norm(eef_pos_2 - target_pos_2, axis=1)
 		cost_g = (np.sum(cost_g_1 * jnp.linspace(0, 1, self.num)) + np.sum(cost_g_2 * jnp.linspace(0, 1, self.num)))/2
 
 		dot_product = jnp.abs(jnp.dot(eef_rot/jnp.linalg.norm(eef_rot, axis=1).reshape(1, self.num).T, target_rot/jnp.linalg.norm(target_rot)))
 		dot_product = jnp.clip(dot_product, -1.0, 1.0)
 		cost_r_1 = 2 * jnp.arccos(dot_product)
 
-		dot_product = jnp.abs(jnp.dot(eef_rot_2/jnp.linalg.norm(eef_rot_2, axis=1).reshape(1, self.num).T, target_rot/jnp.linalg.norm(target_rot)))
+		dot_product = jnp.abs(jnp.dot(eef_rot_2/jnp.linalg.norm(eef_rot_2, axis=1).reshape(1, self.num).T, target_rot_2/jnp.linalg.norm(target_rot_2)))
 		dot_product = jnp.clip(dot_product, -1.0, 1.0)
 		cost_r_2 = 2 * jnp.arccos(dot_product)
 
@@ -162,7 +162,7 @@ class cem_optimization():
 	
 	@partial(jax.jit, static_argnums=(0,))
 	def cem_iter(self, carry, _):
-		init_pos, init_vel, target_pos, target_rot, xi_mean, xi_cov, key, state_term = carry
+		init_pos, init_vel, target_pos, target_rot, target_pos_2, target_rot_2, xi_mean, xi_cov, key, state_term = carry
 
 		xi_mean_prev = xi_mean 
 		xi_cov_prev = xi_cov
@@ -170,12 +170,12 @@ class cem_optimization():
 		thetadot, xi_samples, key = self.sampler.generate_samples(key=key, xi_mean=xi_mean, xi_cov=xi_cov, state_term=state_term)
 
 		theta, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision = self.compute_rollout_batch(thetadot, init_pos, init_vel)
-		cost_batch, cost_g_batch, cost_r_batch, cost_c_batch = self.compute_cost_batch(thetadot, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision, target_pos, target_rot)
+		cost_batch, cost_g_batch, cost_r_batch, cost_c_batch = self.compute_cost_batch(thetadot, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision, target_pos, target_rot, target_pos_2, target_rot_2)
 
 		xi_ellite, idx_ellite, cost_ellite = self.compute_ellite_samples(cost_batch, xi_samples)
 		xi_mean, xi_cov = self.compute_mean_cov(cost_ellite, xi_mean_prev, xi_cov_prev, xi_ellite)
 
-		carry = (init_pos, init_vel, target_pos, target_rot, xi_mean, xi_cov, key, state_term)
+		carry = (init_pos, init_vel, target_pos, target_rot, target_pos_2, target_rot_2, xi_mean, xi_cov, key, state_term)
 		return carry, (cost_batch, cost_g_batch, cost_r_batch, cost_c_batch, thetadot, theta)
 
 	@partial(jax.jit, static_argnums=(0,))
@@ -185,11 +185,16 @@ class cem_optimization():
 		init_vel=jnp.zeros(12), 
 		init_acc=jnp.zeros(12),
 		target_pos=jnp.zeros(3),
-		target_rot=jnp.zeros(4)
+		target_rot=jnp.zeros(4),
+		target_pos_2=jnp.zeros(3),
+		target_rot_2=jnp.zeros(4)
 		):
 
 		target_pos = jnp.tile(target_pos, (self.num_batch, 1))
 		target_rot = jnp.tile(target_rot, (self.num_batch, 1))
+
+		target_pos_2 = jnp.tile(target_pos_2, (self.num_batch, 1))
+		target_rot_2 = jnp.tile(target_rot_2, (self.num_batch, 1))
 
 		theta_init = jnp.tile(init_pos, (self.num_batch, 1))
 		thetadot_init = jnp.tile(init_vel, (self.num_batch, 1))
@@ -204,7 +209,7 @@ class cem_optimization():
   
 		key, subkey = jax.random.split(self.key)
 
-		carry = (init_pos, init_vel, target_pos, target_rot, xi_mean, xi_cov, key, state_term)
+		carry = (init_pos, init_vel, target_pos, target_rot, target_pos_2, target_rot_2, xi_mean, xi_cov, key, state_term)
 		scan_over = jnp.array([0]*self.maxiter_cem)
 		carry, out = jax.lax.scan(self.cem_iter, carry, scan_over, length=self.maxiter_cem)
 		cost_batch, cost_g_batch, cost_r_batch, cost_c_batch, thetadot, theta = out
@@ -216,7 +221,7 @@ class cem_optimization():
 		cost_g = cost_g_batch[-1][idx_min]
 		cost_r = cost_r_batch[-1][idx_min]
 		cost_c = cost_c_batch[-1][idx_min]
-		xi_mean = carry[4]
+		xi_mean = carry[6]
 
 		return cost, cost_g, cost_r, cost_c, thetadot, theta, xi_mean
 	
