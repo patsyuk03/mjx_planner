@@ -22,7 +22,7 @@ class MPC_Planner():
         self.target_rot = None
         self.init_position = None
         self.init_rotation = None
-        self.init_joint_position = np.array([1.5, -1.8, 1.75, -1.25, -1.6, 0])
+        self.init_joint_position = np.array([1.5, -1.8, 1.75, -1.25, -1.6, 0, -1.5, -1.8, 1.75, -1.25, -1.6, 0])
         self.info = dict(
             cost_g_list = list(),
             cost_list = list(),
@@ -35,13 +35,13 @@ class MPC_Planner():
 
     def init_cem(self):
         start_time = time.time()
-        self.cem =  cem_optimization(num_dof=6, num_batch=500, num_steps=8, maxiter_cem=1,
+        self.cem =  cem_optimization(num_dof=12, num_batch=500, num_steps=8, maxiter_cem=1,
                            w_pos=1, w_rot=0.5, w_col=10, num_elite=0.05, timestep=0.05)
         print(f"Initialized CEM Planner: {round(time.time()-start_time, 2)}s")
 
         self.model = self.cem.model
         self.data = self.cem.data
-        self.data.qpos[:6] = jnp.array(self.init_joint_position)
+        self.data.qpos[:self.cem.num_dof] = jnp.array(self.init_joint_position)
         mujoco.mj_forward(self.model, self.data)
 
         self.xi_mean = jnp.zeros(self.cem.nvar)
@@ -53,7 +53,7 @@ class MPC_Planner():
 
 
     def run_mpc(self):
-        thetadot = np.zeros(6)
+        thetadot = np.zeros(self.cem.num_dof)
 
         current_pos = self.init_joint_position
         current_vel = thetadot
@@ -73,8 +73,8 @@ class MPC_Planner():
             while viewer_.is_running():
                 start_time = time.time()
 
-                current_pos = self.data.qpos[:6]
-                current_vel = self.data.qvel[:6]
+                current_pos = self.data.qpos[:self.cem.num_dof]
+                current_vel = self.data.qvel[:self.cem.num_dof]
 
 
                 cost, cost_g, cost_r, cost_c, thetadot, theta, self.xi_mean = self.cem.compute_cem(xi_mean=self.xi_mean, 
@@ -83,7 +83,7 @@ class MPC_Planner():
                                 
                 thetadot = np.mean(thetadot[1:5], axis=0)
 
-                self.data.qvel[:6] = thetadot
+                self.data.qvel[:self.cem.num_dof] = thetadot
                 mujoco.mj_step(self.model, self.data)
 
                 cost_g = np.linalg.norm(self.data.site_xpos[self.cem.tcp_id] - self.target_pos)   
@@ -96,7 +96,7 @@ class MPC_Planner():
                 self.info['cost_r_list'].append(cost_r)
                 self.info['cost_c_list'].append(cost_c)
                 self.info['thetadot_list'].append(thetadot)
-                self.info['theta_list'].append(self.data.qpos[:6].copy())
+                self.info['theta_list'].append(self.data.qpos[:self.cem.num_dof].copy())
                 self.info['cost_list'].append(cost[-1])
 
                 time_until_next_step = self.model.opt.timestep - (time.time() - start_time)
