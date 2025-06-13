@@ -9,7 +9,7 @@ from mujoco import viewer
 
 class Visualizer():
     def __init__(self, ctrl: bool=False, traj: bool=False):
-        self.init_joint_state = np.array([1.5, -1.8, 1.75, -1.25, -1.6, 0])
+        self.init_joint_state = np.array([1.5, -1.8, 1.75, -1.25, -1.6, 0, -1.5, -1.8, 1.75, -1.25, -1.6, 0])
 
         if ctrl:
             model_path = f"{os.path.dirname(__file__)}/ur5e_hande_mjx/scene_control.xml" 
@@ -17,9 +17,9 @@ class Visualizer():
             model_path = f"{os.path.dirname(__file__)}/ur5e_hande_mjx/scene.xml" 
 
         self.model = mujoco.MjModel.from_xml_path(model_path)
-        self.model.opt.timestep = 0.05
+        self.model.opt.timestep = 0.002
         self.data = mujoco.MjData(self.model)
-        self.data.qpos[:6] = self.init_joint_state
+        self.data.qpos[:12] = self.init_joint_state
 
         if traj:
             file_path = f"{os.path.dirname(__file__)}/data/thetadot.csv" 
@@ -62,9 +62,9 @@ class Visualizer():
 
 
 def main():
-    viz = Visualizer(ctrl=False, traj=True)
-    # viz.view_model()
-    viz.view_traj_mujoco()
+    viz = Visualizer(ctrl=False, traj=False)
+    viz.view_model()
+    # viz.view_traj_mujoco()
 
 
 if __name__=="__main__":

@@ -1,10 +1,4 @@
 <mujoco model="ur5e_1">
-  <compiler angle="radian" meshdir="assets" autolimits="true"/>
-
-  <option iterations="1" ls_iterations="5"> 
-    <!-- <flag eulerdamp="disable" sensor="disable"/> -->
-    <flag eulerdamp="disable" actuation="disable" sensor="disable"/>
-  </option>
 
   <default>
     <default class="ur5e_1">
@@ -168,6 +162,94 @@
         </body>
       </body>
     </body>
+
+    <body name="table_2" pos="-0.776 0.342 0.545">
+      <geom name="table_geom_2" type="box" size="0.2 0.375 0.025" rgba="0.6 0.4 0.3 1"/>
+
+      <body name="base_2" quat="1 0 0 1" childclass="ur5e_1" pos="-0.107 -0.31 0.025" gravcomp="1">
+        <geom mesh="base_0_1" material="black_1" class="visual_1"/>
+        <geom mesh="base_1_1" material="jointgray_1" class="visual_1"/>
+
+        <body name="shoulder_link_2" pos="0 0 0.163" gravcomp="1">
+          <inertial mass="3.7" pos="0 0 0" diaginertia="0.0102675 0.0102675 0.00666"/>
+          <joint name="shoulder_pan_joint_2" class="size3_1" axis="0 0 1"/>
+          <geom mesh="shoulder_0_1" material="urblue_1" class="visual_1"/>
+          <geom mesh="shoulder_1_1" material="black_1" class="visual_1"/>
+          <geom mesh="shoulder_2_1" material="jointgray_1" class="visual_1"/>
+          <geom name="robot_11" class="collision_1" size="0.06 0.06" pos="0 0 -0.04"/>
+          
+          <body name="upper_arm_link_2" pos="0 0.138 0" quat="1 0 1 0" gravcomp="1">
+            <inertial mass="8.393" pos="0 0 0.2125" diaginertia="0.133886 0.133886 0.0151074"/>
+            <joint name="shoulder_lift_joint_2" class="size3_1"/>
+            <geom mesh="upperarm_0_1" material="linkgray_1" class="visual_1"/>
+            <geom mesh="upperarm_1_1" material="black_1" class="visual_1"/>
+            <geom mesh="upperarm_2_1" material="jointgray_1" class="visual_1"/>
+            <geom mesh="upperarm_3_1" material="urblue_1" class="visual_1"/>
+            <geom name="robot_12" class="collision_1" pos="0 -0.04 0" quat="1 1 0 0" size="0.06 0.06"/>
+            <geom name="robot_13" class="collision_1" size="0.05 0.2" pos="0 0 0.2"/>
+
+            <body name="forearm_link_2" pos="0 -0.131 0.425" gravcomp="1">
+              <inertial mass="2.275" pos="0 0 0.196" diaginertia="0.0311796 0.0311796 0.004095"/>
+              <joint name="elbow_joint_2" class="size3_limited_1"/>
+              <geom mesh="forearm_0_1" material="urblue_1" class="visual_1"/>
+              <geom mesh="forearm_1_1" material="linkgray_1" class="visual_1"/>
+              <geom mesh="forearm_2_1" material="black_1" class="visual_1"/>
+              <geom mesh="forearm_3_1" material="jointgray_1" class="visual_1"/>
+              <geom name="robot_14" class="collision_1" pos="0 0.08 0" quat="1 1 0 0" size="0.055 0.06"/>
+              <geom name="robot_15" class="collision_1" size="0.038 0.19" pos="0 0 0.2"/>
+
+              <body name="wrist_1_link_2" pos="0 0 0.392" quat="1 0 1 0" gravcomp="1">
+                <inertial mass="1.219" pos="0 0.127 0" diaginertia="0.0025599 0.0025599 0.0021942"/>
+                <joint name="wrist_1_joint_2" class="size1_1"/>
+                <geom mesh="wrist1_0_1" material="black_1" class="visual_1"/>
+                <geom mesh="wrist1_1_1" material="urblue_1" class="visual_1"/>
+                <geom mesh="wrist1_2_1" material="jointgray_1" class="visual_1"/>
+                <geom name="robot_16" class="collision_1" pos="0 0.05 0" quat="1 1 0 0" size="0.04 0.07"/>
+
+                <body name="wrist_2_link_2" pos="0 0.127 0" gravcomp="1">
+                  <inertial mass="1.219" pos="0 0 0.1" diaginertia="0.0025599 0.0025599 0.0021942"/>
+                  <joint name="wrist_2_joint_2" axis="0 0 1" class="size1_1"/>
+                  <geom mesh="wrist2_0_1" material="black_1" class="visual_1"/>
+                  <geom mesh="wrist2_1_1" material="urblue_1" class="visual_1"/>
+                  <geom mesh="wrist2_2_1" material="jointgray_1" class="visual_1"/>
+                  <geom name="robot_17" class="collision_1" size="0.04 0.06" pos="0 0 0.04"/>
+                  <geom name="robot_18" class="collision_1" pos="0 0.02 0.1" quat="1 1 0 0" size="0.04 0.04"/>
+
+                  <body name="wrist_3_link_2" pos="0 0 0.1" gravcomp="1">
+                    <inertial mass="0.1889" pos="0 0.0771683 0" quat="1 0 0 1"
+                      diaginertia="0.000132134 9.90863e-05 9.90863e-05"/>
+                    <joint name="wrist_3_joint_2" class="size1_1"/>
+                    <geom material="linkgray_1" mesh="wrist3_1" class="visual_1"/>
+                    <geom name="robot_19" class="collision_1" pos="0 0.08 0" quat="1 1 0 0" size="0.04 0.02"/>
+                    <site name="attachment_site_2" pos="0 0.1 0" quat="-1 1 0 0"/>
+
+                    <body name="hande_2" pos="0 0.1 0" quat="-1 1 0 0" gravcomp="1">
+                      <geom mesh="coupler" name="hande_coupler_2" type="mesh" class="visual_1" rgba="0.1 0.1 0.1 1" />
+                      <geom mesh="hande" name="hande_base_2" type="mesh" class="visual_1" rgba="0.1 0.1 0.1 1" />
+                      <site name="tcp_2" pos="0 0 0.135"/>
+                      <geom name="robot_10" class="collision_1" pos="0 0 0.04" quat="1 0 0 1" size="0.04 0.07"/>
+
+                      <body name="hande_left_finger_2" pos="0 0 0.099" gravcomp="1">
+                        <inertial pos="0.02262 -0.00759 0.00738" quat="0.871952 0.0369732 -0.211073 0.440205" mass="0.03804" diaginertia="1.22763e-05 1.22763e-05 1.22763e-05"/>
+                        <!-- <joint name="hande_left_finger_joint" class="hande_left_finger" pos="0 0 0" axis="1 0 0"/> -->
+                        <geom mesh="left_finger" type="mesh" group="1"  contype="0" conaffinity="0" rgba="0.4 0.4 0.4 1" />
+                      </body>
+
+                      <body name="hande_right_finger_2" pos="0 0 0.099" gravcomp="1">
+                        <inertial pos="-0.02262 0.00759 0.00738" quat="0.871952 -0.0369732 0.211073 0.440205" mass="0.03804" diaginertia="1.22763e-05 1.22763e-05 1.22763e-05"/>
+                        <!-- <joint name="hande_right_finger_joint" class="hande_right_finger" pos="0 0 0" axis="-1 0 0"/> -->
+                        <geom mesh="right_finger" type="mesh" group="1"  contype="0" conaffinity="0" rgba="0.4 0.4 0.4 1"/>
+                      </body>
+
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
   </worldbody>
 
   <!-- <contact>
@@ -197,4 +279,8 @@
       forcerange="-200 200" gaintype="affine" biastype="affine" gainprm="0.00980392"
       biasprm="0 -100 -10" group='0'/>
   </actuator>  -->
+  <!-- <keyframe>
+
+    <key name="home" qpos="1.5 -1.8 1.75 -1.25 -1.6 0 1.5 -1.8 1.75 -1.25 -1.6 0" />
+  </keyframe>  -->
 </mujoco>
