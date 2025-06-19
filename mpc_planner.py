@@ -104,6 +104,8 @@ class MPC_Planner():
         ]
 
         target_idx = 0
+
+        timestep_counter = 0
         
         with viewer.launch_passive(self.model, self.data) as viewer_:
             viewer_.cam.distance = 4
@@ -113,6 +115,8 @@ class MPC_Planner():
 
             while viewer_.is_running():
                 start_time = time.time()
+                timestep_counter += 1
+
 
                 current_pos = self.data.qpos[:self.cem.num_dof]
                 current_vel = self.data.qvel[:self.cem.num_dof]
@@ -155,7 +159,7 @@ class MPC_Planner():
                         target_idx += 1
                 
                 print(f'Step Time: {"%.0f"%((time.time() - start_time)*1000)}ms | Cost g: {"%.2f"%(float(cost_g))} | Cost r: {"%.2f"%(float(cost_r))} | Cost c: {"%.2f"%(float(cost_c))} | Cost: {cost}')
-
+                print(f'Timestep Counter', timestep_counter)     
 
     def save_info(self):
         np.savetxt('data/costs.csv',self.info['cost_list'], delimiter=",")

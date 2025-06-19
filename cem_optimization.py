@@ -50,7 +50,7 @@ class cem_optimization():
 		self.model_path = f"{os.path.dirname(__file__)}/ur5e_hande_mjx/scene.xml" 
 		self.model = mujoco.MjModel.from_xml_path(self.model_path)
 		self.data = mujoco.MjData(self.model)
-		self.model.opt.timestep = self.t
+		# self.model.opt.timestep = self.t
 
 		self.mjx_model = mjx.put_model(self.model)
 		self.mjx_data = mjx.put_data(self.model, self.data)
