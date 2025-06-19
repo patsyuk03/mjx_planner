@@ -8,7 +8,7 @@ from functools import partial
 import numpy as np
 import time
 
-from trajectory_sampler import TrajSampler
+from trajectory_sampler2 import TrajSampler
 
 import mujoco
 import mujoco.mjx as mjx 
