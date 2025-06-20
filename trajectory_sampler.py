@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import jax
 import jax.numpy as jnp
 
+jax.config.update("jax_enable_x64", True)
+
 class TrajSampler():
     def __init__(self, t_fin, num, num_batch, num_dof):
         self.t_fin = t_fin
@@ -175,9 +177,10 @@ class TrajSampler():
 
 
 def main():
-    num_batch = 100
-    num_dof = 6
-    num = 50
+
+    num_batch = 1
+    num_dof = 2
+    num = 10
     key, subkey = jax.random.split(jax.random.PRNGKey(0))
 
     theta_init = jnp.zeros((num_batch, num_dof))
@@ -193,13 +196,19 @@ def main():
     xi_mean = jnp.zeros(sampler.nvar)
     thetadot, xi_samples, key = sampler.generate_samples(key, xi_mean, xi_cov, state_term)
 
-    for _thetadot in thetadot:
-        plt.plot(_thetadot.reshape((num_dof, num)).T)
-    plt.title("Velocities")
-    plt.xlabel("Step")
-    plt.ylabel("Velocity")
-    plt.legend(['joint 1', 'joint 2', 'joint 3', 'joint 4', 'joint 5', 'joint 6'], loc='upper left')
-    plt.show()
+    np.set_printoptions(precision=3, suppress=True, linewidth=120)
+
+    print("num_dof", num_dof)
+    print("thetadot",thetadot)
+    print("thedatadot",thetadot.shape)
+
+    # for _thetadot in thetadot:
+    #     plt.plot(_thetadot.reshape((num_dof, num)).T)
+    # plt.title("Velocities")
+    # plt.xlabel("Step")
+    # plt.ylabel("Velocity")
+    # plt.legend(['joint 1', 'joint 2', 'joint 3', 'joint 4', 'joint 5', 'joint 6'], loc='upper left')
+    # plt.show()
 
 
 

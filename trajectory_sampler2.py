@@ -7,6 +7,9 @@ import matplotlib.pyplot as plt
 import jax
 import jax.numpy as jnp
 
+jax.config.update("jax_enable_x64", True)
+
+
 class TrajSampler():
     def __init__(self, t_fin, num, num_batch, num_dof):
         self.t_fin = t_fin
@@ -102,10 +105,13 @@ class TrajSampler():
     @partial(jax.jit, static_argnums=(0,))
     def compute_boundary_vec_single_dof(self, state_term):
 
-		# print("state_term", state_term.shape)
-        num_eq_constraint_per_dof = int(jnp.shape(state_term)[0])
-        b_eq_term = state_term.reshape( num_eq_constraint_per_dof).T
-        b_eq_term = b_eq_term.reshape(num_eq_constraint_per_dof)
+		# # print("state_term", state_term.shape)
+        # num_eq_constraint_per_dof = int(jnp.shape(state_term)[0])
+        # b_eq_term = state_term.reshape( num_eq_constraint_per_dof).T
+        # b_eq_term = b_eq_term.reshape(num_eq_constraint_per_dof)
+
+        b_eq_term = state_term.reshape(5, 1).T
+        b_eq_term = b_eq_term.reshape(5)
         return b_eq_term
     
     @partial(jax.jit, static_argnums=(0,))
@@ -182,14 +188,21 @@ class TrajSampler():
     def compute_xi_samples(self, key, xi_mean, xi_cov ):
         key, subkey = jax.random.split(key)
         xi_samples = jax.random.multivariate_normal(key, xi_mean, xi_cov+0.003*jnp.identity(self.nvar), (self.num_batch, ))
+        # xi_samples = jax.random.multivariate_normal(key, xi_mean, xi_cov+0.003*jnp.identity(self.nvar_single), (self.num_batch, ))
         return xi_samples, key
     
     @partial(jax.jit, static_argnums=(0,))
     def generate_samples(self, key, xi_mean, xi_cov, state_term):
+        # print("xi_mean: ", xi_mean.shape)
+        # print("xi_cov: ", xi_cov.shape) 
         xi_samples, key = self.compute_xi_samples(key, xi_mean, xi_cov)
 
+        # print("xi_samples: ", xi_samples.shape)
+
+        #xi_samples = jnp.tile(xi_samples, (self.num_dof, 1))
+
         xi_samples_reshaped = xi_samples.reshape(self.num_batch, self.num_dof, self.nvar_single)
-        xi_samples_batched_over_dof = jnp.transpose(xi_samples_reshaped, (1, 0, 2)) # shape: (DoF, B, num)
+        xi_samples_batched_over_dof = jnp.transpose(xi_samples_reshaped, (1, 0, 2)) # shape: (DoF, B, nvar_single)
 
         state_term_reshaped = state_term.reshape(self.num_batch, self.num_dof, 5)
         state_term_batched_over_dof = jnp.transpose(state_term_reshaped, (1, 0, 2)) #Shape: (DoF, B, 1)
@@ -201,7 +214,10 @@ class TrajSampler():
         
         
         
-        xi_filtered = xi_filtered.reshape(self.num_batch, self.num_dof*self.nvar_single)
+        #xi_filtered = xi_filtered.transpose(1, 0, 2).reshape(self.num_batch, self.num_dof*self.nvar_single)
+
+        xi_filtered = xi_filtered.transpose(1, 0, 2).reshape(self.num_batch, -1) # shape: (B, DoF*nvar_single)
+
 
         thetadot = jnp.dot(self.A_thetadot, xi_filtered.T).T
 
@@ -210,9 +226,9 @@ class TrajSampler():
 
 
 def main():
-    num_batch = 100
-    num_dof = 6
-    num = 50
+    num_batch = 1
+    num_dof = 2
+    num = 10
     key, subkey = jax.random.split(jax.random.PRNGKey(0))
 
     theta_init = jnp.zeros((num_batch, num_dof))
@@ -228,13 +244,19 @@ def main():
     xi_mean = jnp.zeros(sampler.nvar)
     thetadot, xi_samples, key = sampler.generate_samples(key, xi_mean, xi_cov, state_term)
 
-    for _thetadot in thetadot:
-        plt.plot(_thetadot.reshape((num_dof, num)).T)
-    plt.title("Velocities")
-    plt.xlabel("Step")
-    plt.ylabel("Velocity")
-    plt.legend(['joint 1', 'joint 2', 'joint 3', 'joint 4', 'joint 5', 'joint 6'], loc='upper left')
-    plt.show()
+    np.set_printoptions(precision=3, suppress=True, linewidth=120)
+
+    print("num_dof", num_dof)
+    print("thetadot",thetadot)
+    print("thedatadot",thetadot.shape)
+
+    # for _thetadot in thetadot:
+    #     plt.plot(_thetadot.reshape((num_dof, num)).T)
+    # plt.title("Velocities")
+    # plt.xlabel("Step")
+    # plt.ylabel("Velocity")
+    # plt.legend(['joint 1', 'joint 2', 'joint 3', 'joint 4', 'joint 5', 'joint 6'], loc='upper left')
+    # plt.show()
 
 
 

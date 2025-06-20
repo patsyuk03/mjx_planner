@@ -8,12 +8,14 @@ from functools import partial
 import numpy as np
 import time
 
-from trajectory_sampler2 import TrajSampler
+from trajectory_sampler import TrajSampler
 
 import mujoco
 import mujoco.mjx as mjx 
 import jax
 import jax.numpy as jnp
+
+# jax.config.update("jax_enable_x64", True)
 
 
 class cem_optimization():
@@ -21,7 +23,7 @@ class cem_optimization():
 	def __init__(self, num_dof=12, num_batch=100, num_steps=200, timestep=0.02, maxiter_cem=20, num_elite=0.1, w_pos=2, w_rot=0.03, w_col=0.1):
 		super(cem_optimization, self).__init__()
 
-		self.key= jax.random.PRNGKey(0)
+		self.key= jax.random.PRNGKey(42)
 	 
 		self.num_dof = num_dof
 		self.num_batch = num_batch
@@ -209,6 +211,8 @@ class cem_optimization():
   
 		key, subkey = jax.random.split(self.key)
 
+		#key = self.key
+
 		carry = (init_pos, init_vel, target_pos, target_rot, target_pos_2, target_rot_2, xi_mean, xi_cov, key, state_term)
 		scan_over = jnp.array([0]*self.maxiter_cem)
 		carry, out = jax.lax.scan(self.cem_iter, carry, scan_over, length=self.maxiter_cem)
@@ -228,8 +232,8 @@ class cem_optimization():
 def main():
 
 	start_time = time.time()
-	opt_class = cem_optimization(num_dof=6, num_batch=2000, num_steps=50, maxiter_cem=30,
-                           w_pos=1, w_rot=0.5, w_col=10, num_elite=0.05, timestep=0.05)
+	opt_class = cem_optimization(num_dof=12, num_batch=2, num_steps=10, maxiter_cem=1,
+                           w_pos=1, w_rot=0.5, w_col=10, num_elite=0.5, timestep=0.05)
 
 	start_time_comp_cem = time.time()
 	target_pos = np.array([-0.3, 0, 0.9])
@@ -239,12 +243,14 @@ def main():
 	print(f"Total time: {round(time.time()-start_time, 2)}s")
 	print(f"Compute CEM time: {round(time.time()-start_time_comp_cem, 2)}s")
 
-	np.savetxt('data/costs.csv',cost, delimiter=",")
+	print(f"thetadot: {thetadot}")
+
+	# np.savetxt('data/costs.csv',cost, delimiter=",")
 	np.savetxt('data/thetadot.csv',thetadot, delimiter=",")
-	np.savetxt('data/theta.csv',theta, delimiter=",")
-	np.savetxt('data/cost_g.csv',cost_g, delimiter=",")
-	np.savetxt('data/cost_r.csv',cost_r, delimiter=",")
-	np.savetxt('data/cost_c.csv',[cost_c], delimiter=",")
+	# np.savetxt('data/theta.csv',theta, delimiter=",")
+	# np.savetxt('data/cost_g.csv',cost_g, delimiter=",")
+	# np.savetxt('data/cost_r.csv',cost_r, delimiter=",")
+	# np.savetxt('data/cost_c.csv',[cost_c], delimiter=",")
 
 	
 	

@@ -10,7 +10,7 @@ from mujoco import viewer
 import matplotlib.pyplot as plt
 from utils.quat_math import rotation_quaternion, quaternion_multiply, quaternion_distance
 
-
+# jax.config.update("jax_enable_x64", True)
 class MPC_Planner():
     def __init__(self):
 
