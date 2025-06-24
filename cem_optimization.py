@@ -52,7 +52,7 @@ class cem_optimization():
 		self.model_path = f"{os.path.dirname(__file__)}/ur5e_hande_mjx/scene.xml" 
 		self.model = mujoco.MjModel.from_xml_path(self.model_path)
 		self.data = mujoco.MjData(self.model)
-		# self.model.opt.timestep = self.t
+		self.model.opt.timestep = self.t
 
 		self.mjx_model = mjx.put_model(self.model)
 		self.mjx_data = mjx.put_data(self.model, self.data)
@@ -150,17 +150,23 @@ class cem_optimization():
 		prods = d * jnp.outer(term_1,term_2)
 		return prods	
 	
+	# @partial(jax.jit, static_argnums=(0,))
+	# def compute_mean_cov(self, cost_ellite, mean_control_prev, cov_control_prev, xi_ellite):
+	# 	w = cost_ellite
+	# 	w_min = jnp.min(cost_ellite)
+	# 	w = jnp.exp(-(1/self.lamda) * (w - w_min ) )
+	# 	sum_w = jnp.sum(w, axis = 0)
+	# 	mean_control = (1-self.alpha_mean)*mean_control_prev + self.alpha_mean*(jnp.sum( (xi_ellite * w[:,jnp.newaxis]) , axis= 0)/ sum_w)
+	# 	diffs = (xi_ellite - mean_control)
+	# 	prod_result = self.vec_product(diffs, w)
+	# 	cov_control = (1-self.alpha_cov)*cov_control_prev + self.alpha_cov*(jnp.sum( prod_result , axis = 0)/jnp.sum(w, axis = 0)) + 0.0001*jnp.identity(self.nvar)
+	# 	return mean_control, cov_control
+
 	@partial(jax.jit, static_argnums=(0,))
 	def compute_mean_cov(self, cost_ellite, mean_control_prev, cov_control_prev, xi_ellite):
-		w = cost_ellite
-		w_min = jnp.min(cost_ellite)
-		w = jnp.exp(-(1/self.lamda) * (w - w_min ) )
-		sum_w = jnp.sum(w, axis = 0)
-		mean_control = (1-self.alpha_mean)*mean_control_prev + self.alpha_mean*(jnp.sum( (xi_ellite * w[:,jnp.newaxis]) , axis= 0)/ sum_w)
-		diffs = (xi_ellite - mean_control)
-		prod_result = self.vec_product(diffs, w)
-		cov_control = (1-self.alpha_cov)*cov_control_prev + self.alpha_cov*(jnp.sum( prod_result , axis = 0)/jnp.sum(w, axis = 0)) + 0.0001*jnp.identity(self.nvar)
-		return mean_control, cov_control
+		xi_mean = jnp.mean(xi_ellite, axis = 0)
+		xi_cov = jnp.cov(xi_ellite.T)
+		return xi_mean, xi_cov
 	
 	@partial(jax.jit, static_argnums=(0,))
 	def cem_iter(self, carry, _):
@@ -232,21 +238,23 @@ class cem_optimization():
 def main():
 
 	start_time = time.time()
-	opt_class = cem_optimization(num_dof=12, num_batch=2, num_steps=10, maxiter_cem=1,
-                           w_pos=1, w_rot=0.5, w_col=10, num_elite=0.5, timestep=0.05)
+	opt_class = cem_optimization(num_dof=12, num_batch=1000, num_steps=50, maxiter_cem=30,
+                           w_pos=1, w_rot=0.5, w_col=10, num_elite=0.05, timestep=0.05)
 
 	start_time_comp_cem = time.time()
-	target_pos = np.array([-0.3, 0, 0.9])
+	target_pos = np.array([-0.3, -0.2, 0.9])
 	target_rot = np.array([0, 0.70711, 0.70711, 0])
-	cost, cost_g, cost_r, cost_c, thetadot, theta, xi_mean = opt_class.compute_cem(xi_mean=np.zeros(opt_class.nvar), target_pos=target_pos, target_rot=target_rot)
+	target_pos_2 = np.array([-0.3, 0.2, 0.9])
+	target_rot_2 = np.array([0, 0.70711, -0.70711, 0])
+	cost, cost_g, cost_r, cost_c, thetadot, theta, xi_mean = opt_class.compute_cem(xi_mean=np.zeros(opt_class.nvar), target_pos=target_pos, target_rot=target_rot, target_pos_2=target_pos_2, target_rot_2=target_rot_2)
 
 	print(f"Total time: {round(time.time()-start_time, 2)}s")
 	print(f"Compute CEM time: {round(time.time()-start_time_comp_cem, 2)}s")
 
-	print(f"thetadot: {thetadot}")
+	# print(f"thetadot: {thetadot}")
 
 	# np.savetxt('data/costs.csv',cost, delimiter=",")
-	np.savetxt('data/thetadot.csv',thetadot, delimiter=",")
+	np.savetxt('data/thetadot_2.csv',thetadot, delimiter=",")
 	# np.savetxt('data/theta.csv',theta, delimiter=",")
 	# np.savetxt('data/cost_g.csv',cost_g, delimiter=",")
 	# np.savetxt('data/cost_r.csv',cost_r, delimiter=",")

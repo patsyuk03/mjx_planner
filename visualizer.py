@@ -42,17 +42,17 @@ class Visualizer():
             model_path = f"{os.path.dirname(__file__)}/ur5e_hande_mjx/scene.xml" 
 
         self.model = mujoco.MjModel.from_xml_path(model_path)
-        self.model.opt.timestep = 0.002
+        self.model.opt.timestep = 0.05
         self.data = mujoco.MjData(self.model)
         self.data.qpos[:12] = self.init_joint_state
         target_idx = 2
-        self.model.body(name="target_0").pos = target_positions_1[target_idx]
-        self.model.body(name="target_0").quat = target_rotations_1[target_idx]
-        self.model.body(name="target_1").pos = target_positions_2[target_idx]
-        self.model.body(name="target_1").quat = target_rotations_2[target_idx]
+        # self.model.body(name="target_0").pos = target_positions_1[target_idx]
+        # self.model.body(name="target_0").quat = target_rotations_1[target_idx]
+        # self.model.body(name="target_1").pos = target_positions_2[target_idx]
+        # self.model.body(name="target_1").quat = target_rotations_2[target_idx]
 
         if traj:
-            file_path = f"{os.path.dirname(__file__)}/data/thetadot.csv" 
+            file_path = f"{os.path.dirname(__file__)}/data/thetadot_1.csv" 
             self.thetadot = np.genfromtxt(file_path, delimiter=',')
 
 
@@ -72,7 +72,7 @@ class Visualizer():
             i = 0
             while viewer_.is_running():
                 step_start = time.time()
-                self.data.qvel[:6] = self.thetadot[i]
+                self.data.qvel[:12] = self.thetadot[i]
 
                 mujoco.mj_step(self.model, self.data)
                 viewer_.sync()
@@ -84,17 +84,17 @@ class Visualizer():
                 if i < self.thetadot.shape[0]-1:
                     i+=1
                 else:
-                    self.data.qvel[:6] = np.zeros(6)
-                    self.data.qpos[:6] = self.init_joint_state
+                    self.data.qvel[:12] = np.zeros(12)
+                    self.data.qpos[:12] = self.init_joint_state
                     i=0
 
 
 
 
 def main():
-    viz = Visualizer(ctrl=False, traj=False)
-    viz.view_model()
-    # viz.view_traj_mujoco()
+    viz = Visualizer(ctrl=False, traj=True)
+    # viz.view_model()
+    viz.view_traj_mujoco()
 
 
 if __name__=="__main__":

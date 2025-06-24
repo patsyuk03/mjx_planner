@@ -174,7 +174,7 @@ def main():
     mpc = MPC_Planner()
     mpc.init_cem()
     mpc.run_mpc()
-    mpc.save_info()
+    # mpc.save_info()
 
 if __name__=="__main__":
     main()
