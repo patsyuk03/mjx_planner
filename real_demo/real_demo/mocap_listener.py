@@ -5,7 +5,7 @@ from rclpy.qos import QoSProfile, QoSReliabilityPolicy
 from ament_index_python.packages import get_package_share_directory
 import os
 
-import urx
+# import urx
 import time
 
 import mujoco
@@ -14,12 +14,15 @@ import numpy as np
 
 from mj_planner.mjx_planner import cem_planner
 
+from rtde_control import RTDEControlInterface as RTDEControl
+from rtde_receive import RTDEReceiveInterface as RTDEReceive
+
 class MocapListener(Node):
     def __init__(self):
         super().__init__('mocap_listener')
         qos_profile = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
-            depth=10
+            depth=1
         )
 
         self.cem = None
@@ -38,7 +41,9 @@ class MocapListener(Node):
 
         connected = False
         try:
-            self.rob = urx.Robot("192.168.0.120")
+            # self.rob = urx.Robot("192.168.0.120")
+            self.rtde_c = RTDEControl("192.168.0.120")
+            self.rtde_r = RTDEReceive("192.168.0.120")
             connected = True
             print("Connection with UR5e established.")
         except:
@@ -60,22 +65,25 @@ class MocapListener(Node):
                 qos_profile 
             )
             # self.run_mpc()
-            self.timer = self.create_timer(0.1, self.run_mpc)
+            self.timer = self.create_timer(0.05, self.run_mpc)
             # self.close_connection()
 
     def move_to_start(self):
-        self.rob.movej(self.init_joint_position, acc=0.5, vel=0.5, wait=True)
+        # self.rob.movej(self.init_joint_position, acc=0.5, vel=0.5, wait=True)
+        self.rtde_c.moveJ(self.init_joint_position, asynchronous=False)
         print("Moved to initial pose.")
 
     def close_connection(self):
-        self.rob.stopj()
-        self.rob.close()
+        # self.rob.stopj()
+        # self.rob.close()
+        self.rtde_c.speedStop()
+        self.rtde_c.disconnect()
         print("Disconnected from UR5 Robot")
 
     def init_cem(self):
         start_time = time.time()
-        self.cem =  cem_planner(num_dof=6, num_batch=500, num_steps=8, maxiter_cem=1,
-                           w_pos=5, w_rot=1.5, w_col=10, num_elite=0.05, timestep=0.1)
+        self.cem =  cem_planner(num_dof=6, num_batch=1000, num_steps=8, maxiter_cem=1,
+                           w_pos=5, w_rot=1.5, w_col=10, num_elite=0.05, timestep=0.05)
         print(f"Initialized CEM Planner: {round(time.time()-start_time, 2)}s")
 
         self.model = self.cem.model
@@ -102,7 +110,7 @@ class MocapListener(Node):
 
         start_time = time.time()
         _ = self.cem.compute_cem(xi_mean=self.xi_mean, 
-                                 init_pos=np.array(self.rob.getj()), init_vel=np.zeros(6), 
+                                 init_pos=np.array(self.rtde_r.getActualQ()), init_vel=np.zeros(6), 
                                  target_pos=self.target_pos, target_rot=self.target_rot,
                                  obstacle_pos=self.obstacle_pos, obstacle_rot=self.obstacle_rot)
         print(f"Compute CEM: {round(time.time()-start_time, 2)}s")
@@ -111,8 +119,10 @@ class MocapListener(Node):
 
         start_time = time.time()
 
-        current_pos = np.array(self.rob.getj())
-        current_vel = self.thetadot
+        # current_pos = np.array(self.rob.getj())
+        current_pos = np.array(self.rtde_r.getActualQ())
+        # current_vel = self.thetadot
+        current_vel = np.array(self.rtde_r.getActualQd())
 
 
         self.target_pos = self.model.body(name="target").pos
@@ -126,13 +136,16 @@ class MocapListener(Node):
                                 target_pos=self.target_pos, target_rot=self.target_rot, 
                                 obstacle_pos=self.obstacle_pos, obstacle_rot=self.obstacle_rot)
         
-        self.thetadot = np.mean(best_vels[1:3], axis=0)
+        self.thetadot = np.mean(best_vels[1:5], axis=0)
 
         # s_time = time.time()
-        self.rob.speedj(self.thetadot, acc=2, min_time=0.2)
+        # self.rob.speedj(self.thetadot, acc=2, min_time=0.2)
+        self.rtde_c.speedJ(self.thetadot, acceleration=1.4, time=0.05)
         # print(f'Time: {"%.0f"%((time.time() - s_time)*1000)}ms')
 
-        self.data.qpos[:6] = self.rob.getj()
+        # self.data.qpos[:6] = self.rob.getj()
+        self.data.qpos[:6] = self.rtde_r.getActualQ()
+
         # self.data.qvel[:6] = thetadot
         mujoco.mj_step(self.model, self.data)
 
