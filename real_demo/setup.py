@@ -29,6 +29,12 @@ for dirpath, dirnames, filenames in os.walk('mj_planner'):
         install_path = os.path.join('share', package_name, dirpath)
         data_files.append((install_path, files))
 
+for dirpath, dirnames, filenames in os.walk('json'):
+    if filenames:
+        files = [os.path.join(dirpath, f) for f in filenames]
+        install_path = os.path.join('share', package_name, dirpath)
+        data_files.append((install_path, files))
+
 setup(
     name=package_name,
     version='0.0.0',
@@ -44,6 +50,7 @@ setup(
     entry_points={
         'console_scripts': [
             'mocap_listener = real_demo.mocap_listener:main'
+            'visualizer = real_demo.visualizer:main'
         ],
     },
 )

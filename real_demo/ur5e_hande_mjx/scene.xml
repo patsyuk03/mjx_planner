@@ -1,5 +1,13 @@
 <mujoco model="ur5e scene">
-  <include file="ur5e_1_robotiq_hande.xml"/>
+
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+
+  <option iterations="1" ls_iterations="5"> 
+    <!-- <flag eulerdamp="disable" sensor="disable"/> -->
+    <flag eulerdamp="disable" actuation="disable" sensor="disable"/>
+  </option>
+
+  <include file="ur5e_dual_arm_robotiq_hande.xml"/>
 
   <statistic center="0.3 0 0.4" extent="0.8"/>
 
@@ -23,25 +31,23 @@
     <camera name="camera1" pos="0 0 4" xyaxes="1 0 0 0 1 0"/>
   </worldbody>
 
-  <contact>
-    <exclude body1="hande" body2="target"/>
-    <exclude body1="wrist_3_link_1" body2="target"/>
-    <exclude body1="wrist_2_link_1" body2="target"/>
-    <exclude body1="wrist_1_link_1" body2="target"/>
-    <exclude body1="forearm_link_1" body2="target"/>
-    <exclude body1="upper_arm_link_1" body2="target"/>
-    <exclude body1="shoulder_link_1" body2="target"/>
-    <exclude body1="base_1" body2="target"/>
-    <exclude body1="table_1" body2="target"/>
+  <!-- <contact>
+    <exclude body1="hande" body2="target_0"/>
+    <exclude body1="wrist_3_link_1" body2="target_0"/>
+    <exclude body1="wrist_2_link_1" body2="target_0"/>
+    <exclude body1="wrist_1_link_1" body2="target_0"/>
+    <exclude body1="forearm_link_1" body2="target_0"/>
+    <exclude body1="upper_arm_link_1" body2="target_0"/>
+    <exclude body1="shoulder_link_1" body2="target_0"/>
+    <exclude body1="base_1" body2="target_0"/>
 
-    <!-- <exclude body1="hande" body2="obstacle"/>
-    <exclude body1="wrist_3_link_1" body2="obstacle"/>
-    <exclude body1="wrist_2_link_1" body2="obstacle"/>
-    <exclude body1="wrist_1_link_1" body2="obstacle"/>
-    <exclude body1="forearm_link_1" body2="obstacle"/>
-    <exclude body1="upper_arm_link_1" body2="obstacle"/>
-    <exclude body1="shoulder_link_1" body2="obstacle"/>
-    <exclude body1="base_1" body2="obstacle"/>
-    <exclude body1="table_1" body2="obstacle"/> -->
-  </contact>
+    <exclude body1="hande" body2="target_0"/>
+    <exclude body1="wrist_3_link_1" body2="target_0"/>
+    <exclude body1="wrist_2_link_1" body2="target_0"/>
+    <exclude body1="wrist_1_link_1" body2="target_0"/>
+    <exclude body1="forearm_link_1" body2="target_0"/>
+    <exclude body1="upper_arm_link_1" body2="target_0"/>
+    <exclude body1="shoulder_link_1" body2="target_0"/>
+    <exclude body1="base_1" body2="target_0"/>
+  </contact> -->
 </mujoco>
