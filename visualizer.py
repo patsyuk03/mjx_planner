@@ -7,6 +7,9 @@ import mujoco
 from mujoco import viewer
 from utils.quat_math import rotation_quaternion, quaternion_multiply, quaternion_distance
 
+from rtde_control import RTDEControlInterface as RTDEControl
+from rtde_receive import RTDEReceiveInterface as RTDEReceive
+
 target_positions_1 = [
             [-0.3, 0.3, 0.8],
             [-0.2, -0.4, 1.0],
@@ -45,11 +48,11 @@ class Visualizer():
         self.model.opt.timestep = 0.002
         self.data = mujoco.MjData(self.model)
         self.data.qpos[:12] = self.init_joint_state
-        target_idx = 2
-        self.model.body(name="target_0").pos = target_positions_1[target_idx]
-        self.model.body(name="target_0").quat = target_rotations_1[target_idx]
-        self.model.body(name="target_1").pos = target_positions_2[target_idx]
-        self.model.body(name="target_1").quat = target_rotations_2[target_idx]
+        # target_idx = 2
+        # self.model.body(name="target_0").pos = target_positions_1[target_idx]
+        # self.model.body(name="target_0").quat = target_rotations_1[target_idx]
+        # self.model.body(name="target_1").pos = target_positions_2[target_idx]
+        # self.model.body(name="target_1").quat = target_rotations_2[target_idx]
 
         if traj:
             file_path = f"{os.path.dirname(__file__)}/data/thetadot.csv" 
@@ -61,6 +64,24 @@ class Visualizer():
 
     def view_model(self):
         viewer.launch(self.model, self.data)
+
+    def update_model(self):
+        rtde_c_1 = RTDEControl("192.168.0.120")
+        rtde_r_1 = RTDEReceive("192.168.0.120")
+
+        rtde_c_2 = RTDEControl("192.168.0.124")
+        rtde_r_2 = RTDEReceive("192.168.0.124")
+        
+        theta_1 = rtde_r_1.getActualQ()
+        theta_2 = rtde_r_2.getActualQ()
+
+        theta = np.concatenate((theta_1, theta_2), axis=None)
+
+        self.data.qpos[:12] = theta
+
+        # self.model.body(name="table_1").pos = [0, 0, 0]
+
+
 
     def view_traj_mujoco(self):
         with viewer.launch_passive(self.model, self.data) as viewer_:
@@ -93,6 +114,7 @@ class Visualizer():
 
 def main():
     viz = Visualizer(ctrl=False, traj=False)
+    viz.update_model()
     viz.view_model()
     # viz.view_traj_mujoco()
 
