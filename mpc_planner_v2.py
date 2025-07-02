@@ -1,5 +1,5 @@
 import numpy as np
-from cem_optimization import cem_optimization
+from cem_optimization_v2 import cem_optimization
 import mujoco.mjx as mjx 
 import mujoco
 import time
@@ -17,7 +17,8 @@ class MPC_Planner():
         self.cem = None
         self.model = None
         self.data = None
-        self.xi_mean = None
+        self.xi_mean_1 = None
+        self.xi_mean_2 = None
         self.target_pos = None
         self.target_rot = None
         self.target_pos_2 = None
@@ -44,7 +45,8 @@ class MPC_Planner():
         self.data.qpos[:self.cem.num_dof] = jnp.array(self.init_joint_position)
         mujoco.mj_forward(self.model, self.data)
 
-        self.xi_mean = jnp.zeros(self.cem.nvar)
+        self.xi_mean_1 = jnp.zeros(self.cem.nvar)
+        self.xi_mean_2 = jnp.zeros(self.cem.nvar)
         self.target_pos = self.model.body(name="target_0").pos
         self.target_rot = self.model.body(name="target_0").quat
         self.target_pos_2 = self.model.body(name="target_1").pos
@@ -58,7 +60,7 @@ class MPC_Planner():
         current_vel = thetadot
 
         start_time = time.time()
-        _ = self.cem.compute_cem(xi_mean=self.xi_mean, 
+        _ = self.cem.compute_cem(xi_mean_1=self.xi_mean_1, xi_mean_2=self.xi_mean_2, 
                                       init_pos=current_pos, init_vel=current_vel, 
                                       target_pos=self.target_pos, target_rot=self.target_rot,
                                       target_pos_2=self.target_pos_2, target_rot_2=self.target_rot_2)
@@ -72,7 +74,7 @@ class MPC_Planner():
 
         target_positions_1 = [
             [-0.3, 0.3, 0.3],
-            [-0.1, -0.35, 0.6],
+            [-0.15, -0.35, 0.6],
             # [-0.3, -0.1, 0.3],
             init_position_1
         ]
@@ -86,7 +88,7 @@ class MPC_Planner():
 
         target_positions_2 = [
             [-0.3, -0.3, 0.3],
-            [-0.3, 0.4, 0.6],
+            [-0.25, 0.4, 0.6],
             # [-0.3, 0.1, 0.3],
             init_position_2
         ]
@@ -113,10 +115,13 @@ class MPC_Planner():
                 current_vel = self.data.qvel[:self.cem.num_dof]
 
 
-                cost, cost_g, cost_r, cost_c, thetadot, theta, self.xi_mean = self.cem.compute_cem(xi_mean=self.xi_mean, 
-                                      init_pos=current_pos, init_vel=current_vel, 
-                                      target_pos=self.target_pos, target_rot=self.target_rot,
-                                      target_pos_2=self.target_pos_2, target_rot_2=self.target_rot_2)
+                # print(self.xi_mean_1.shape, self.xi_mean_2.shape)
+                cost, cost_g, cost_r, cost_c, thetadot, theta, self.xi_mean_1, self.xi_mean_2 = self.cem.compute_cem(
+                                            xi_mean_1=self.xi_mean_1, xi_mean_2=self.xi_mean_2, 
+                                            init_pos=current_pos, init_vel=current_vel, 
+                                            target_pos=self.target_pos, target_rot=self.target_rot,
+                                            target_pos_2=self.target_pos_2, target_rot_2=self.target_rot_2)
+            
                                 
                 thetadot = np.mean(thetadot[1:6], axis=0)
                 # thetadot = thetadot[1]

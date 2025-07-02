@@ -34,15 +34,17 @@ target_rotations_2 = [
     quaternion_multiply(rotation_quaternion(0, np.array([0,0,1])),rotation_quaternion(90, np.array([0,1,0]))),
 ]
 
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+
 
 class Visualizer():
     def __init__(self, ctrl: bool=False, traj: bool=False):
         self.init_joint_state = np.array([1.5, -1.8, 1.75, -1.25, -1.6, 0, -1.5, -1.8, 1.75, -1.25, -1.6, 0])
 
         if ctrl:
-            model_path = f"{os.path.dirname(__file__)}/ur5e_hande_mjx/scene_control.xml" 
+            model_path = f"{FILE_PATH}/ur5e_hande_mjx/scene_control.xml" 
         else:
-            model_path = f"{os.path.dirname(__file__)}/ur5e_hande_mjx/scene.xml" 
+            model_path = f"{FILE_PATH}/ur5e_hande_mjx/scene.xml" 
 
         self.model = mujoco.MjModel.from_xml_path(model_path)
         self.model.opt.timestep = 0.002
@@ -55,7 +57,7 @@ class Visualizer():
         # self.model.body(name="target_1").quat = target_rotations_2[target_idx]
 
         if traj:
-            file_path = f"{os.path.dirname(__file__)}/data/thetadot.csv" 
+            file_path = f"{FILE_PATH}/data/thetadot.csv" 
             self.thetadot = np.genfromtxt(file_path, delimiter=',')
 
 
@@ -114,7 +116,7 @@ class Visualizer():
 
 def main():
     viz = Visualizer(ctrl=False, traj=False)
-    viz.update_model()
+    # viz.update_model()
     viz.view_model()
     # viz.view_traj_mujoco()
 

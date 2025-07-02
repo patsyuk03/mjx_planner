@@ -18,7 +18,7 @@ import jax.numpy as jnp
 
 class cem_optimization():
 
-	def __init__(self, num_dof=12, num_batch=100, num_steps=200, timestep=0.02, maxiter_cem=20, num_elite=0.1, w_pos=2, w_rot=0.03, w_col=0.1):
+	def __init__(self, num_dof=12, num_batch=100, num_steps=200, timestep=0.02, maxiter_cem=20, num_elite=0.1, w_pos=2, w_rot=0.03, w_col=0.1, w_theta=0.2):
 		super(cem_optimization, self).__init__()
 
 		self.key= jax.random.PRNGKey(0)
@@ -35,6 +35,7 @@ class cem_optimization():
 			'w_pos': w_pos,
 			'w_rot': w_rot,
 			'w_col': w_col,
+			'w_theta': w_theta,
 		}
 
 		self.sampler = TrajSampler(t_fin=self.t_fin, num=self.num, num_batch=self.num_batch, num_dof=self.num_dof)
@@ -47,10 +48,12 @@ class cem_optimization():
 		self.g = 10
 		self.vec_product = jax.jit(jax.vmap(self.comp_prod, 0, out_axes=(0)))
 
-		self.model_path = f"{os.path.dirname(__file__)}/ur5e_hande_mjx/scene.xml" 
+		self.model_path = f"{os.path.dirname(os.path.abspath(__file__))}/ur5e_hande_mjx/scene.xml" 
 		self.model = mujoco.MjModel.from_xml_path(self.model_path)
 		self.data = mujoco.MjData(self.model)
 		self.model.opt.timestep = self.t
+
+		self.init_joint_position = np.array([1.5, -1.8, 1.75, -1.25, -1.6, 0, -1.5, -1.8, 1.75, -1.25, -1.6, 0])
 
 		self.mjx_model = mjx.put_model(self.model)
 		self.mjx_data = mjx.put_data(self.model, self.data)
@@ -111,7 +114,7 @@ class cem_optimization():
 		return theta.T.flatten(), eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision
 	
 	@partial(jax.jit, static_argnums=(0,))
-	def compute_cost_single(self, thetadot, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision, target_pos, target_rot, target_pos_2, target_rot_2):
+	def compute_cost_single(self, theta, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision, target_pos, target_rot, target_pos_2, target_rot_2):
 		cost_g_1 = jnp.linalg.norm(eef_pos - target_pos, axis=1)
 		cost_g_2 = jnp.linalg.norm(eef_pos_2 - target_pos_2, axis=1)
 		cost_g = (np.sum(cost_g_1 * jnp.linspace(0, 1, self.num)) + np.sum(cost_g_2 * jnp.linspace(0, 1, self.num)))/2
@@ -126,12 +129,14 @@ class cem_optimization():
 
 		cost_r = (np.sum(cost_r_1 * jnp.linspace(0, 1, self.num)) + np.sum(cost_r_2 * jnp.linspace(0, 1, self.num)))/2
 
-		y = 0.08
+		y = 0.03
 		collision = collision.T
 		g = -collision[:, 1:]+collision[:, :-1]-y*collision[:, :-1]
 		cost_c = jnp.sum(jnp.max(g.reshape(g.shape[0], g.shape[1], 1), axis=-1, initial=0)) + jnp.sum(jnp.where(collision<0, True, False))
 
-		cost = self.cost_weights['w_pos']*cost_g + self.cost_weights['w_rot']*cost_r + self.cost_weights['w_col']*cost_c
+		cost_theta = jnp.linalg.norm(theta.reshape((self.num_dof, self.num)).T - self.init_joint_position)
+
+		cost = self.cost_weights['w_pos']*cost_g + self.cost_weights['w_rot']*cost_r + self.cost_weights['w_col']*cost_c + self.cost_weights["w_theta"]*cost_theta
 		return cost, cost_g_1, cost_r_1, cost_c
 	
 	@partial(jax.jit, static_argnums=(0, ))
@@ -170,7 +175,7 @@ class cem_optimization():
 		thetadot, xi_samples, key = self.sampler.generate_samples(key=key, xi_mean=xi_mean, xi_cov=xi_cov, state_term=state_term)
 
 		theta, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision = self.compute_rollout_batch(thetadot, init_pos, init_vel)
-		cost_batch, cost_g_batch, cost_r_batch, cost_c_batch = self.compute_cost_batch(thetadot, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision, target_pos, target_rot, target_pos_2, target_rot_2)
+		cost_batch, cost_g_batch, cost_r_batch, cost_c_batch = self.compute_cost_batch(theta, eef_pos, eef_rot, eef_pos_2, eef_rot_2, collision, target_pos, target_rot, target_pos_2, target_rot_2)
 
 		xi_ellite, idx_ellite, cost_ellite = self.compute_ellite_samples(cost_batch, xi_samples)
 		xi_mean, xi_cov = self.compute_mean_cov(cost_ellite, xi_mean_prev, xi_cov_prev, xi_ellite)
