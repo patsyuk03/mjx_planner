@@ -49,7 +49,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mocap_listener = real_demo.mocap_listener:main'
+            'mocap_listener = real_demo.mocap_listener:main',
             'visualizer = real_demo.visualizer:main'
         ],
     },
